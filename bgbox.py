@@ -5,10 +5,11 @@ Created on Sun Sep 19 18:01:39 2021
 
 @author: pierrebarbault
 """
-from scipy.special import erf
+import matplotlib. pyplot as plt
 import numpy as np
 from numpy.random import rand
 from numpy.random import randn
+from scipy.special import erf
 
 # =============================================================================
 # MISC
@@ -181,16 +182,12 @@ def fista(Hty, x_init, t, HtH, kerArgs, norme=0):
 
     x = np.copy(x_init)
     u = 1 * x
-
     norm = 1.0
-
     c = 1 / norm
-
     go = True
     b = 1.0
 
     while go:
-
         w = grad(Hty, x, c, HtH, kerArgs)
 
         if norme == 0:
@@ -200,11 +197,10 @@ def fista(Hty, x_init, t, HtH, kerArgs, norme=0):
 
         next_b = (1 + np.sqrt(1 + 4 * b ** 2)) / 2
         x = next_u + (b - 1) / next_b * (next_u - u)
-
         u = 1 * next_u
         critere = np.mean((u - x) ** 2) / np.mean(x ** 2)
-
         go = critere > 10.0 ** (-6)
+
     return u
 
 
@@ -278,7 +274,7 @@ def emista(Hty, HtH, kerArgs):
         x = 1 * u
         go = critere > 10.0 ** (-6)
 
-    return (theta, x)
+    return theta, x
 
 
 # def fista(Hty,T,x_true,HtH,kerArgs):
@@ -334,4 +330,13 @@ def courbe(Hty, T, x_true, HtH, kerArgs, mode="fista"):
             x_1 = fista(Hty, x_1, t, HtH, kerArgs, 1)
             res_1[j] = SNR(x_true, x_1)
             sup_1[j] = np.mean(abs(supp - 1 * (x_1 != 0)))
-    return (res_0, res_1, sup_0, sup_1)
+    return res_0, res_1, sup_0, sup_1
+
+
+if __name__ == '__main__':
+    p = 0.95
+    sigma_x = 1.
+    Nx = 30
+    Ny = 20
+    x = genBG(p, sigma_x, Nx, Ny)
+    # XXX : add here a working example
