@@ -5,10 +5,10 @@ Created on Sun Sep 19 18:01:39 2021
 
 @author: pierrebarbault
 """
-from scipy.special import erf
 import numpy as np
 from numpy.random import rand
 from numpy.random import randn
+from scipy.special import erf
 
 # =============================================================================
 # MISC
@@ -25,10 +25,9 @@ def SNR(u,v):
 def genBG(p,sigma_x,Nx,Ny):
     return (rand(Nx,Ny)<p)*(randn(Nx,Ny))*sigma_x
 
-<<<<<<< Updated upstream
 def noise(x,iSNR):
     """ Noise generator """
-=======
+
 def genBG(p, sigma_x, Nx, Ny):
     """Generate a signal of shape (Nx,Ny) ~ BG(p,sigma_x^2)"""
     return (rand(Nx, Ny) < p) * (randn(Nx, Ny)) * sigma_x
@@ -36,7 +35,6 @@ def genBG(p, sigma_x, Nx, Ny):
 
 def noise(x, iSNR):
     """Noise generator"""
->>>>>>> Stashed changes
     N = np.shape(x)
     sigma_e = np.sqrt(np.mean(x**2)*10**(-iSNR/10))
     y = x + sigma_e*randn(N[0],N[1])
