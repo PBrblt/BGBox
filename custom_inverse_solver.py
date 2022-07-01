@@ -194,12 +194,6 @@ def em_step(Y, theta):
     """EM update with x as complete data."""
     p, sigma_x, sigma_b = theta
     N = np.size(Y)
-    # print(N)
-
-    #        q1 = p/(np.sqrt(2*np.pi*(sigma_x**2+sigma_b**2)))*np.exp(-Y**2/(2*(sigma_x**2+sigma_b**2)))
-    #        q0 = (1-p)/(np.sqrt(2*np.pi*(sigma_b**2)))*np.exp(-Y**2/(2*(sigma_b**2)))
-    #        Q = q0+q1
-    #        q1,q0 = q1/Q,q0/Q
 
     sig_2 = (sigma_x ** 2 + sigma_b ** 2) * sigma_b ** 2 / sigma_x ** 2
     q1 = 1 / (
@@ -215,6 +209,15 @@ def em_step(Y, theta):
     X_hat = Y * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
     Phi = q1 / (q1 + q0)
 
+    N_sources,N_times = Y.shape
+    #print(Phi.shape)
+    phi_k =  np.mean(Phi,axis=1)
+    #print(phi_k.shape)
+    phi_t = np.ones(N_times)
+    Ones,Phi = np.meshgrid(phi_t,phi_k)
+    #Phi = np.tile(phi_k.T,(1,N_times))#Mixed norm
+    #print(Phi.shape)
+
     p = np.sum(Phi) / N
     sigma_x = np.sqrt(np.sum(Phi * X_hat ** 2) / np.sum(Phi) + sigma_n)
     sigma_b = np.sqrt(
@@ -224,7 +227,96 @@ def em_step(Y, theta):
     X_eap = Y * Phi * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
     #X_map = (q1 > q0) * Y * np.sqrt(sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2))
 
-    return ([p, sigma_x, sigma_b], X_eap)
+    return ([p, sigma_x, sigma_b], X_eap,Phi)
+
+def IHT(H, Y, X0, t):
+    epsilon = 1e-6
+
+    X = np.copy(X0)
+    
+    norm = np.linalg.norm(H@H.T,2)
+    
+    c = 1/norm
+
+    
+    go = True
+    while go:
+        
+        W = X + c*H.T@(Y-H@X)
+        
+        
+        U = (abs(W)>t)*W
+        
+        criterion = np.mean((U-X)**2)/np.mean(X**2)
+        #print(critere)
+        X = 1*U
+        
+        go = criterion > epsilon
+            
+    return(X)
+
+def tresh(theta,mmse=False):
+    """Compute treshold value"""
+    p, sig_x, sig_e = theta
+    s_x, s_e = sig_x ** 2, sig_e ** 2
+    T_map = np.sqrt(
+        2 * s_e / s_x * (s_e + s_x) * np.log((1 - p) / p * np.sqrt((s_e + s_x) / s_e))
+    )
+    T_mmse = np.sqrt(
+        T_map ** 2 + 2 * s_e / s_x * (s_e + s_x) * np.log((s_e + s_x) / (s_x - s_e))
+    )
+    if mmse :
+        return T_mmse
+    else :
+        return T_map
+
+def lemur(Y,H):
+    """"Run Latent EM Unsupervised Regression for Bernoulli Gaussian Prior
+    Parameters
+    ----------
+    Y : array, shape (n_channels, n_times)
+        The observed data.
+    H : array, shape (n_channels, n_dipoles)
+        The gain matrix a.k.a. the forward operator. The number of locations
+        is n_dipoles / n_orient. n_orient will be 1 for a fixed orientation
+        constraint or 3 when using a free orientation model.
+
+    Returns
+    -------
+    X : array, (n_dipoles, n_times)
+        The Posterior Mean Estimation.
+    theta : array, (3)
+        The estimated parameters : [p, sigma_x, sigma_b].
+    """
+    epsilon_theta = 1e-8 #convergence parameter for the EM
+    epsilon_x = 1e-6 #convergence parameter for the overall algorithm
+
+    X = H.T@Y # initialisation of X
+    theta_p = [0,0,0] # initialisation of theta
+    
+    norm = np.linalg.norm(H@H.T,2)
+    alpha = 1/norm
+    print("Norm of ||HHt|| : "+str(norm))
+    
+    go = True
+    while go:
+        Z = X + alpha * H.T@(Y - H@X) #gradient descent
+
+        theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
+
+        while np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2) > epsilon_theta:
+            theta_p = 1 * theta
+            theta, u, phi = em_step(Z, theta)
+
+        criterion = np.mean((u - X) ** 2) / np.mean(X ** 2)
+        #print(criterion)
+        X = 1 * u
+        
+        go = criterion > epsilon_x
+    print("theta : " + str(theta))
+    print(np.mean(phi>0.5))
+    return X, theta
+
 
 def solver_cust(M, G, n_orient):
     """Run EM parameter estimation and Posterior Mean Estimation.
@@ -251,38 +343,26 @@ def solver_cust(M, G, n_orient):
         We have ``X_full[active_set] == X`` where X_full is the full X matrix
         such that ``M = G X_full``.
     """
-    epsilon_theta = 1e-8 #convergence parameter for the EM
-    epsilon_x = 1e-4 #convergence parameter for the overall algorithm
-
-    X = G.T@M
-    print(np.shape(X))
     
-    norm = np.linalg.norm(G@G.T)
-    print(norm)
-    
-    alpha = 1/norm
-    #print("Alpha : " +str(alpha) )
-    
-    theta_p = [0,0,0]
-    go = True
-    
-    while go:
-        Z = X + alpha * G.T@(M - G@X) #gradient descent
+    alpha = 1/np.sqrt(np.linalg.norm(G@G.T,2))
+    #alpha = 1/np.linalg.norm(G@G.T)
+    alpha = 1
+    X,theta = lemur(M*alpha,G*alpha)
+    T_map = tresh([theta[0],theta[1],theta[2]/alpha])
+    print("T_map : " +str(T_map))
 
-        theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
-
-        while np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2) > epsilon_theta:
-            theta_p = 1 * theta
-            theta, u = em_step(Z, theta)
-
-        criterion = np.mean((u - X) ** 2) / np.mean(X ** 2)
-        #print(criterion)
-        X = 1 * u
+    iht_layer = True
+    if iht_layer :
+        T = np.linspace(10*T_map,T_map,100)
+        X_L0 = 0*X
+        for t in T :
+            X_L0 = IHT(G,M,X_L0,t)
         
-        go = criterion > epsilon_x
-    print(theta)
+        X = X_L0*1
 
-    indices = np.argsort(np.sum(X ** 2, axis=1))[-10:]
+    n_active = int(theta[0]*X.shape[0])
+
+    indices = np.argsort(np.sum(X ** 2, axis=1))[-n_active:]
     active_set = np.zeros(G.shape[1], dtype=bool)
     for idx in indices:
         idx -= idx % n_orient
