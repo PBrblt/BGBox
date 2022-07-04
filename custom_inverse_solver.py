@@ -115,7 +115,6 @@ def apply_solver(solver, evoked, forward, noise_cov, loose=0.2, depth=0.8):
 
     n_orient = 1 if is_fixed_orient(forward) else 3
     X, active_set = solver(M, gain, n_orient)
-    print(np.shape(X),np.shape(active_set))
     X = _reapply_source_weighting(X, source_weighting, active_set)
 
     stc = _make_sparse_stc(X, active_set, forward, tmin=evoked.times[0],
@@ -190,12 +189,35 @@ def moments(Y):
     # p = min(p,1)
     return (p, sigma_x, sigma_b)
 
+def compute_posterior_0(obs, param):
+    """Compute the posterior probability of a mixture of gaussian with norm l-0."""
+    p = param[0]
+    s_x = param[1]**2
+    s_b = param[2]**2
+
+    posterior_prob = 1/(
+        1 + np.sqrt(s_x/s_b + 1) * np.exp( -obs**2/2 *s_x/s_b /(s_b+s_x))
+        )
+    return posterior_prob
+
+def compute_posterior_02(obs, param):
+    """Compute the posterior probability of a mixture of gaussian with mixed norms l-02."""
+    p = param[0]
+    s_x = param[1]**2
+    s_b = param[2]**2
+
+    posterior_prob = 1/(
+        1 + np.sqrt(s_x/s_b + 1) * np.exp( -np.sum(obs**2,axis=1)/2 *s_x/s_b /(s_b+s_x))
+        )
+    return posterior_prob
+
 def em_step(Y, theta):
     """EM update with x as complete data."""
     p, sigma_x, sigma_b = theta
     N = np.size(Y)
 
     sig_2 = (sigma_x ** 2 + sigma_b ** 2) * sigma_b ** 2 / sigma_x ** 2
+
     q1 = 1 / (
         1
         + (1 - p)
@@ -209,14 +231,10 @@ def em_step(Y, theta):
     X_hat = Y * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
     Phi = q1 / (q1 + q0)
 
-    N_sources,N_times = Y.shape
-    #print(Phi.shape)
-    phi_k =  np.mean(Phi,axis=1)
-    #print(phi_k.shape)
-    phi_t = np.ones(N_times)
-    Ones,Phi = np.meshgrid(phi_t,phi_k)
-    #Phi = np.tile(phi_k.T,(1,N_times))#Mixed norm
-    #print(Phi.shape)
+    # N_sources,N_times = Y.shape
+    # phi_k =  np.mean(Phi,axis=1)
+    # phi_t = np.ones(N_times)
+    # Ones,Phi = np.meshgrid(phi_t,phi_k)
 
     p = np.sum(Phi) / N
     sigma_x = np.sqrt(np.sum(Phi * X_hat ** 2) / np.sum(Phi) + sigma_n)
@@ -228,6 +246,39 @@ def em_step(Y, theta):
     #X_map = (q1 > q0) * Y * np.sqrt(sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2))
 
     return ([p, sigma_x, sigma_b], X_eap,Phi)
+
+def em_step_2(Y, theta):
+    """EM update with x as complete data."""
+    # p, sigma_x, sigma_b = theta
+    # N = np.size(Y)
+
+    # sig_2 = (sigma_x ** 2 + sigma_b ** 2) * sigma_b ** 2 / sigma_x ** 2
+    # sigma_n = sigma_x ** 2 * sigma_b ** 2 / (sigma_x ** 2 + sigma_b ** 2)
+    # X_hat = Y * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
+
+    #phi_k = compute_posterior_02(Y, theta)
+
+    rho = (1-theta[0])/theta[0]
+    s_x = theta[1]**2
+    s_b = theta[2]**2
+
+    mu = theta[1]/(theta[1]+theta[2])
+    phi_k = 1/(
+        1 + rho*np.sqrt(s_x/s_b + 1) * np.exp( -np.sum(Y**2,axis=1)/2 *mu/s_b )
+        )
+
+    p = np.mean(phi_k)
+    nu = mu*theta[2]
+    sigma_x = np.sqrt( nu + mu**2/p * np.mean(phi_k*np.mean(Y**2,axis=1) ) )
+    sigma_b = np.sqrt( np.mean(Y**2) - 2 * mu * np.mean(phi_k*np.mean(Y**2,axis=1)) + p*sigma_x**2 )
+    #sigma_x = np.sqrt(np.sum(phi_k * np.sum(X_hat ** 2,axis=1)) / np.sum(phi_k) + sigma_n)
+    #sigma_b = np.sqrt(
+    #    np.sum(phi_k * np.sum(((Y - X_hat) ** 2 + sigma_n),axis=1)) / N + np.sum((1 - phi_k) * np.sum(Y ** 2,axis=1) / N
+    #))
+
+    X_eap = (phi_k * Y.T).T * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
+
+    return ([p, sigma_x, sigma_b], X_eap,phi_k)
 
 def IHT(H, Y, X0, t):
     epsilon = 1e-6
@@ -289,7 +340,7 @@ def lemur(Y,H):
         The estimated parameters : [p, sigma_x, sigma_b].
     """
     epsilon_theta = 1e-8 #convergence parameter for the EM
-    epsilon_x = 1e-6 #convergence parameter for the overall algorithm
+    epsilon_x = 1e-8 #convergence parameter for the overall algorithm
 
     X = H.T@Y # initialisation of X
     theta_p = [0,0,0] # initialisation of theta
@@ -305,8 +356,10 @@ def lemur(Y,H):
         theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
 
         while np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2) > epsilon_theta:
+            #print(np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2))
             theta_p = 1 * theta
-            theta, u, phi = em_step(Z, theta)
+            theta, u, phi = em_step_2(Z, theta)
+            #theta, u, phi = em_step(Z, theta)
 
         criterion = np.mean((u - X) ** 2) / np.mean(X ** 2)
         #print(criterion)
@@ -314,7 +367,8 @@ def lemur(Y,H):
         
         go = criterion > epsilon_x
     print("theta : " + str(theta))
-    print(np.mean(phi>0.5))
+    print("Ratio of probable sources : " + str(np.sum(phi>0.5))+" / " + str(phi.size) )
+    #return (phi>0.5)*X, theta
     return X, theta
 
 
@@ -343,7 +397,8 @@ def solver_cust(M, G, n_orient):
         We have ``X_full[active_set] == X`` where X_full is the full X matrix
         such that ``M = G X_full``.
     """
-    
+    print(np.shape(M),np.shape(G))
+
     alpha = 1/np.sqrt(np.linalg.norm(G@G.T,2))
     #alpha = 1/np.linalg.norm(G@G.T)
     alpha = 1
@@ -351,7 +406,7 @@ def solver_cust(M, G, n_orient):
     T_map = tresh([theta[0],theta[1],theta[2]/alpha])
     print("T_map : " +str(T_map))
 
-    iht_layer = True
+    iht_layer = False
     if iht_layer :
         T = np.linspace(10*T_map,T_map,100)
         X_L0 = 0*X
@@ -360,8 +415,9 @@ def solver_cust(M, G, n_orient):
         
         X = X_L0*1
 
-    n_active = int(theta[0]*X.shape[0])
+    n_active = 14#int(theta[0]*X.shape[0])
 
+    #indices = np.where(np.sum(X ** 2, axis=1)!=0)
     indices = np.argsort(np.sum(X ** 2, axis=1))[-n_active:]
     active_set = np.zeros(G.shape[1], dtype=bool)
     for idx in indices:
