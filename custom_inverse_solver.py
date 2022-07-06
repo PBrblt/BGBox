@@ -189,6 +189,28 @@ def moments(Y):
     # p = min(p,1)
     return (p, sigma_x, sigma_b)
 
+def perform_moments(mixture):
+    """Moments identification method for gaussian mixture."""
+
+    m2 = np.mean(mixture ** 2)
+    m4 = np.mean(mixture ** 4) / 3
+    m6 = np.mean(mixture ** 6) / 15
+
+    a = m2 ** 2 - m4
+    b = m6 - m2 * m4
+    c = m4 ** 2 - m2 * m6
+
+    disc = b ** 2 - 4 * a * c
+    if disc<0 :
+        print("oops")
+        disc = 0
+
+    sigma_b_2 = max( - b - np.sqrt(disc) , - b + np.sqrt(disc) )/(2 * a)
+    sigma_x_2 = (m4 - sigma_b_2 ** 2)/(m2 - sigma_b_2) - 2 * sigma_b_2
+    p = (m2 - sigma_b_2)/sigma_x_2
+    
+    return (p, sigma_x_2, sigma_b_2)
+
 def compute_posterior_0(obs, param):
     """Compute the posterior probability of a mixture of gaussian with norm l-0."""
     p = param[0]
@@ -353,7 +375,8 @@ def lemur(Y,H):
     while go:
         Z = X + alpha * H.T@(Y - H@X) #gradient descent
 
-        theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
+        #theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
+        theta = perform_moments(Z)#Initialisation of the EM (feel free to find better ones !)
 
         while np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2) > epsilon_theta:
             #print(np.mean((np.array(theta_p) / np.array(theta) - 1) ** 2))
