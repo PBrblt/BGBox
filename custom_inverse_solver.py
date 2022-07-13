@@ -298,7 +298,8 @@ def em_step_2(Y, theta):
     #    np.sum(phi_k * np.sum(((Y - X_hat) ** 2 + sigma_n),axis=1)) / N + np.sum((1 - phi_k) * np.sum(Y ** 2,axis=1) / N
     #))
 
-    X_eap = (phi_k * Y.T).T * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
+    #X_eap = (phi_k * Y.T).T * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
+    X_eap = Y * phi_k[:,None] * sigma_x ** 2 / (sigma_x ** 2 + sigma_b ** 2)
 
     return ([p, sigma_x, sigma_b], X_eap,phi_k)
 
@@ -438,7 +439,7 @@ def solver_cust(M, G, n_orient):
         
         X = X_L0*1
 
-    n_active = 14#int(theta[0]*X.shape[0])
+    n_active = int(theta[0]*X.shape[0])
 
     #indices = np.where(np.sum(X ** 2, axis=1)!=0)
     indices = np.argsort(np.sum(X ** 2, axis=1))[-n_active:]
@@ -463,4 +464,6 @@ stc = apply_solver(solver_cust, evoked, forward, noise_cov, loose, depth)
 plot_sparse_source_estimates(forward['src'], stc, bgcolor=(1, 1, 1),
                              opacity=0.1)
 
+# %%
+stc.plot(subjects_dir=subjects_dir,hemi='both')
 # %%
