@@ -189,7 +189,7 @@ def moments(Y):
     # p = min(p,1)
     return (p, sigma_x, sigma_b)
 
-def perform_moments(mixture):
+def perform_moments_old(mixture):
     """Moments identification method for gaussian mixture."""
 
     m2 = np.mean(mixture ** 2)
@@ -210,6 +210,39 @@ def perform_moments(mixture):
     p = (m2 - sigma_b_2)/sigma_x_2
     
     return (p, sigma_x_2, sigma_b_2)
+
+def perform_moments(mixture):
+        """Moments identification method for gaussian mixture."""
+
+        m2, m4, m6 = np.mean(mixture ** 2), np.mean(mixture ** 4) / 3, np.mean(mixture ** 6) / 15
+
+        a = m2 ** 2 - m4
+        b = m6 - m2 * m4
+        c = m4 ** 2 - m2 * m6
+
+        if a > 0 :
+            tresh = m2-np.sqrt(a)
+        else :
+            tresh = m2
+
+        disc = b ** 2 - 4 * a * c
+        if disc<0 :
+            #print("oops")
+            disc = 0
+
+        # there are two roots for sigma_b_2, however the good one must be in the interval [0,m2-sqrt(a)]
+
+        if ( - b /(2 * a) - np.sqrt(disc)/(2 * a) )>=0 and ( - b /(2 * a) - np.sqrt(disc)/(2 * a) )<= tresh :
+            sigma_b_2 = - b /(2 * a) - np.sqrt(disc)/(2 * a)
+        elif ( - b /(2 * a) + np.sqrt(disc)/(2 * a) )>=0 and ( - b /(2 * a) + np.sqrt(disc)/(2 * a) )<= tresh :
+            sigma_b_2 = - b /(2 * a) + np.sqrt(disc)/(2 * a)
+        else :
+            sigma_b_2 = 0.99*tresh # worst case scenario
+        #sigma_b_2 = - b /(2 * a) + max( - np.sqrt(disc)/(2 * a) , np.sqrt(disc)/(2 * a) )
+        sigma_x_2 = (m4 - sigma_b_2 ** 2)/(m2 - sigma_b_2) - 2 * sigma_b_2
+        p = (m2 - sigma_b_2)/sigma_x_2
+
+        return (p, sigma_x_2, sigma_b_2)
 
 def compute_posterior_0(obs, param):
     """Compute the posterior probability of a mixture of gaussian with norm l-0."""
@@ -303,6 +336,10 @@ def em_step_2(Y, theta):
 
     return ([p, sigma_x, sigma_b], X_eap,phi_k)
 
+def em_step_z(Y, theta):
+    """Latent EM with z as complete data"""
+    return ([p, sigma_x, sigma_b], X_eap,phi_k)
+
 def IHT(H, Y, X0, t):
     epsilon = 1e-6
 
@@ -369,11 +406,14 @@ def lemur(Y,H):
     theta_p = [0,0,0] # initialisation of theta
     
     norm = np.linalg.norm(H@H.T,2)
-    alpha = 1/norm
+    alpha = 1#/norm
     print("Norm of ||HHt|| : "+str(norm))
     
     go = True
-    while go:
+    N_out = 100
+    ite = 0
+    while go and (ite < N_out):
+        ite += 1
         Z = X + alpha * H.T@(Y - H@X) #gradient descent
 
         #theta = moments(Z)#Initialisation of the EM (feel free to find better ones !)
@@ -389,11 +429,12 @@ def lemur(Y,H):
         #print(criterion)
         X = 1 * u
         
+        print(criterion)
         go = criterion > epsilon_x
     print("theta : " + str(theta))
     print("Ratio of probable sources : " + str(np.sum(phi>0.5))+" / " + str(phi.size) )
     #return (phi>0.5)*X, theta
-    return X, theta
+    return X, theta, phi
 
 
 def solver_cust(M, G, n_orient):
@@ -423,10 +464,10 @@ def solver_cust(M, G, n_orient):
     """
     print(np.shape(M),np.shape(G))
 
-    alpha = 1/np.sqrt(np.linalg.norm(G@G.T,2))
-    #alpha = 1/np.linalg.norm(G@G.T)
-    alpha = 1
-    X,theta = lemur(M*alpha,G*alpha)
+    #alpha = 1/np.sqrt(np.linalg.norm(G@G.T,2))
+    alpha = 1/np.linalg.norm(G, 2)
+    #alpha = 1
+    X,theta, phi = lemur(M*alpha,G*alpha)
     T_map = tresh([theta[0],theta[1],theta[2]/alpha])
     print("T_map : " +str(T_map))
 
@@ -448,6 +489,12 @@ def solver_cust(M, G, n_orient):
         idx -= idx % n_orient
         active_set[idx:idx + n_orient] = True
     X = X[active_set]
+
+    ## Version which plot activation map
+#    n_active = X.shape[0]
+#    indices = np.argsort(phi)[-n_active:]
+#    active_set = np.ones(G.shape[1], dtype=bool)
+#    X = np.ones(X.shape)*phi[:,None]
     return X, active_set
 
 
