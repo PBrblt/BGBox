@@ -316,7 +316,7 @@ def fista(H, y, x_init, T, norme=0):
     
     it = 0
     
-    while np.mean((x_est - prev_x)**2)/np.mean(prev_x**2) > 10e-3 :
+    while np.mean((x_est - prev_x)**2) > 10e-3 * np.mean(prev_x**2) :
         
         prev_x = 1 * x_est
         
@@ -457,11 +457,11 @@ L = 0.06
 #               Patch(facecolor='white', edgecolor ='black', label='Mom'), Patch(facecolor='white', edgecolor ='black', hatch = '//', label='M'),
 #               Patch(facecolor='white', edgecolor ='black', hatch = '--', label='J'), Patch(facecolor='white', edgecolor ='black', hatch = 'xx', label='LEMUR')]
 
-handle_list = [Patch(color='r', label='L0'), Patch(color='y', label='M'), Patch(color='g', label='J'), 
+handle_list = [Patch(color='r', label='L0'), Patch(color='y', label='J_z'), Patch(color='g', label='J_x'), 
                Patch(color='b', edgecolor ='black', label='LEMUR'), Patch(facecolor='white', edgecolor ='black', label='p=0.01'),
                Patch(facecolor='white', edgecolor ='black', hatch = '//', label='p=0.05'), Patch(facecolor='white', edgecolor ='black', hatch = '--', label='p=0.1')]
 
-handle_list2 = [Patch(color='r', label='Mom'), Patch(color='y', label='M'), Patch(color='g', label='J'), 
+handle_list2 = [Patch(color='r', label='Mom'), Patch(color='y', label='J_z'), Patch(color='g', label='J_x'), 
                Patch(color='b', edgecolor ='black', label='LEMUR'), Patch(facecolor='white', edgecolor ='black', label='p=0.01'),
                Patch(facecolor='white', edgecolor ='black', hatch = '//', label='p=0.05'), Patch(facecolor='white', edgecolor ='black', hatch = '--', label='p=0.1')]
 
