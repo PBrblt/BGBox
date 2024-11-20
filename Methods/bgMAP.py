@@ -83,7 +83,7 @@ def deb_joint(y, theta_in, gamma, fixed = False):
     
     #print(delta[mask])
     
-    if np.sum(mask) != 0 :
+    if any(mask) :
         p_est = p_est[mask]
         
         # Estimation corrigée :
@@ -102,7 +102,7 @@ def deb_joint(y, theta_in, gamma, fixed = False):
         cond_2 = (T_est - T_max[mask]) * (T_est > T_max[mask]) + (T_min[mask] - T_est) * (T_est < T_min[mask])
         cond = cond_2 == 0
         
-        if np.sum(cond) != 0 :
+        if any(cond) :
             
             min_Q = np.argmin(Q_est[cond])
             
@@ -113,12 +113,16 @@ def deb_joint(y, theta_in, gamma, fixed = False):
         else :
             #print('crap')
             #min_Q = np.argmin(Q_est) #OLD
-            min_Q = np.argmin(cond_2[T_est > 0])
-            
-            s_e_est = s_e_est[T_est > 0]
-            s_x_est = s_x_est[T_est > 0]
-            p_est = p_est[T_est > 0]
-            T_est = T_est[T_est > 0]
+            if any(T_est > 0): # Ajout car bug parfois
+                min_Q = np.argmin(cond_2[T_est > 0])
+
+                s_e_est = s_e_est[T_est > 0]
+                s_x_est = s_x_est[T_est > 0]
+                p_est = p_est[T_est > 0]
+                T_est = T_est[T_est > 0]
+            else :
+                print("Oula")
+                min_Q = np.argmin(cond_2)
             
             
         

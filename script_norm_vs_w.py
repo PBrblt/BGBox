@@ -118,24 +118,64 @@ def exp_l0(H, y, x, s):
 N_x = 900
 N_y = 300
 
-list_H = []
+create_H = False
 
-list_w = [0.0, 0.1, 0.3, 0.5]
-list_H.append(np.eye(N_x))
-bars = ['Id']
+if create_H:
+    list_H = []
 
-for w in list_w :
-    i = np.arange(900)
-    a,b = np.meshgrid(i,i)
-    cov = w ** (abs(a-b))
-    H = np.random.multivariate_normal(0*i,cov,N_y)
-    H = H / np.linalg.norm(H, 2)
-    list_H.append(H)
-    bars.append('w=' + str(w))
+    mu = np.ones(N_x)
+    #list_H.append(np.eye(N_x))
+    #bars = ['Id']
 
-print(bars)
+    #list_H.append(np.random.randn(N_x,N_x))
+    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    #bars.append("Rndn sqr")
 
-#list_H = np.load("Results/list_H.npy", allow_pickle=True)
+    #list_H.append(np.random.randn(N_y,N_x))
+    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    #bars.append("Rndn rec")
+
+    ## list_H.append(np.random.randn(N_x,N_x)**2)
+    ## list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    ## bars.append("Rnd sqr")
+    #list_H.append(np.random.multivariate_normal(0.5 * mu, np.eye(N_x),N_x))
+    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    #bars.append("Rndn + 1")
+
+    ## list_H.append(np.random.randn(N_y,N_x)**2)
+    ## list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    ## bars.append("Rnd rec")
+    #list_H.append(np.random.multivariate_normal(0.5 * mu, np.eye(N_x),N_y))
+    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+    #bars.append("Rndn + 1")
+
+    list_w = [0.0, 0.1, 0.3, 0.5]
+    bars = []
+    for w in list_w:
+        list_H.append(np.random.multivariate_normal(w * mu, np.eye(N_x),N_y))
+        list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        bars.append("Rnd " + str(w))
+
+    # i = np.arange(900)
+    # a,b = np.meshgrid(i,i)
+    # for w in list_w :
+    #    cov = w ** (abs(a-b))
+    #    H = np.random.multivariate_normal(0*i,cov,N_y)
+    #    H = H / np.linalg.norm(H, 2)
+    #    list_H.append(H)
+    #    bars.append('w=' + str(w))
+
+    # list_w = [0.0, 0.05, 0.1, 0.2]
+    # for w in list_w :
+    #    H = np.random.multivariate_normal(w*np.ones(N_x),np.eye(N_x),N_y)
+    #    H = H / np.linalg.norm(H, 2)
+    #    list_H.append(H)
+    #    bars.append('\mu=' + str(w))
+
+    print(bars)
+else:
+    #list_H = np.load("Results/list_H.npy", allow_pickle=True)
+    list_H = np.load("Results/list_H_sbl.npy", allow_pickle=True)
 
 #H = read_op('meg')
 #H = H / np.linalg.norm(H, 2)
@@ -174,7 +214,7 @@ def exp_trial(p, iSNR, fixed = False):
                 theta_mom[2] = s_e
             
             res_em[0, k_op, :3] += exp_l0(H, y, x, s) / N_samples
-            res_em[0, k_op, 3:] += (theta_mom - theta) / rel / N_samples
+            res_em[0, k_op, 3:] += abs(theta_mom - theta) / rel / N_samples
             
             theta_m, x_m = lem.em_marg(H, y, 0 * x, theta_mom, fixed, N_out = 100)
             
@@ -184,13 +224,13 @@ def exp_trial(p, iSNR, fixed = False):
             
             
             res_em[1, k_op, :3] += normes(x, s, x_m) / N_samples
-            res_em[1, k_op, 3:] += (theta_m - theta) / rel / N_samples
+            res_em[1, k_op, 3:] += abs(theta_m - theta) / rel / N_samples
             
             res_em[2, k_op, :3] += normes(x, s, x_j) / N_samples
-            res_em[2, k_op, 3:] += (theta_j - theta) / rel  / N_samples
+            res_em[2, k_op, 3:] += abs(theta_j - theta) / rel  / N_samples
             
             res_em[3, k_op, :3] += normes(x, s, x_jm) / N_samples
-            res_em[3, k_op, 3:] += (theta_jm - theta) / rel / N_samples
+            res_em[3, k_op, 3:] += abs(theta_jm - theta) / rel / N_samples
     return res_em
 
 # =============================================================================
@@ -201,11 +241,16 @@ iSNR = 20
 
 p_list = [0.01, 0.05, 0.1]
 
-np.save("Results/list_H", list_H)
-savemat("Results/list_H.mat", {'H':list_H})
+save_op = False
+
+if save_op:
+    np.save("Results/list_H", list_H)
+    savemat("Results/list_H.mat", {'H':list_H})
+    #np.save("Results/list_H_sbl", list_H)
+    #savemat("Results/list_H_sbl.mat", {'H':list_H})
 
 for i in range(len(p_list)) :
     p = p_list[i]
     res_em = exp_trial(p, iSNR)
 
-    np.save("Results/res_" + str(iSNR) + "_" + str(i), res_em)
+    np.save("Results/res_sbl_" + str(iSNR) + "_" + str(i), res_em)
