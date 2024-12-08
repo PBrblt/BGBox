@@ -116,45 +116,48 @@ def exp_l0(H, y, x, s):
 # =============================================================================
 
 N_x = 900
-N_y = 300
+N_y = 600
 
 create_H = False
+sbl = True
 
 if create_H:
+
     list_H = []
-
     mu = np.ones(N_x)
-    #list_H.append(np.eye(N_x))
-    #bars = ['Id']
 
-    #list_H.append(np.random.randn(N_x,N_x))
-    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    #bars.append("Rndn sqr")
+    if sbl :
+        list_w = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+        bars = []
+        for w in list_w:
+            list_H.append(np.random.multivariate_normal(w * mu, np.eye(N_x),N_y))
+            list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+            bars.append("Rnd " + str(w))
+    else :
+        list_H.append(np.eye(N_x))
+        bars = ['Id']
 
-    #list_H.append(np.random.randn(N_y,N_x))
-    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    #bars.append("Rndn rec")
-
-    ## list_H.append(np.random.randn(N_x,N_x)**2)
-    ## list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    ## bars.append("Rnd sqr")
-    #list_H.append(np.random.multivariate_normal(0.5 * mu, np.eye(N_x),N_x))
-    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    #bars.append("Rndn + 1")
-
-    ## list_H.append(np.random.randn(N_y,N_x)**2)
-    ## list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    ## bars.append("Rnd rec")
-    #list_H.append(np.random.multivariate_normal(0.5 * mu, np.eye(N_x),N_y))
-    #list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-    #bars.append("Rndn + 1")
-
-    list_w = [0.0, 0.1, 0.3, 0.5]
-    bars = []
-    for w in list_w:
-        list_H.append(np.random.multivariate_normal(w * mu, np.eye(N_x),N_y))
+        list_H.append(np.random.randn(N_x,N_x))
         list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
-        bars.append("Rnd " + str(w))
+        bars.append("Rndn sqr")
+
+        list_H.append(np.random.randn(N_y,N_x))
+        list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        bars.append("Rndn rec")
+
+        # list_H.append(np.random.randn(N_x,N_x)**2)
+        # list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        # bars.append("Rnd sqr")
+        list_H.append(np.random.multivariate_normal(0.4 * mu, np.eye(N_x),N_x))
+        list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        bars.append("Rndn + 1")
+
+        # list_H.append(np.random.randn(N_y,N_x)**2)
+        # list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        # bars.append("Rnd rec")
+        list_H.append(np.random.multivariate_normal(0.4 * mu, np.eye(N_x),N_y))
+        list_H[-1] = list_H[-1] / np.linalg.norm(list_H[-1], 2)
+        bars.append("Rndn + 1")
 
     # i = np.arange(900)
     # a,b = np.meshgrid(i,i)
@@ -174,8 +177,11 @@ if create_H:
 
     print(bars)
 else:
-    #list_H = np.load("Results/list_H.npy", allow_pickle=True)
-    list_H = np.load("Results/list_H_sbl.npy", allow_pickle=True)
+    if sbl :
+        list_H = np.load("Results/list_H_sbl.npy", allow_pickle=True)
+    else :
+        list_H = np.load("Results/list_H.npy", allow_pickle=True)
+    
 
 #H = read_op('meg')
 #H = H / np.linalg.norm(H, 2)
@@ -244,13 +250,20 @@ p_list = [0.01, 0.05, 0.1]
 save_op = False
 
 if save_op:
-    np.save("Results/list_H", list_H)
-    savemat("Results/list_H.mat", {'H':list_H})
-    #np.save("Results/list_H_sbl", list_H)
-    #savemat("Results/list_H_sbl.mat", {'H':list_H})
+    if sbl :
+        np.save("Results/list_H_sbl", list_H)
+        savemat("Results/list_H_sbl.mat", {'H':list_H})
+    else :
+        np.save("Results/list_H", list_H)
+        savemat("Results/list_H.mat", {'H':list_H})
+    
 
 for i in range(len(p_list)) :
     p = p_list[i]
     res_em = exp_trial(p, iSNR)
 
-    np.save("Results/res_sbl_" + str(iSNR) + "_" + str(i), res_em)
+    if sbl :
+        np.save("Results/res_sbl_" + str(iSNR) + "_" + str(i), res_em)
+    else :
+        np.save("Results/res_" + str(iSNR) + "_" + str(i), res_em)
+    

@@ -7,13 +7,14 @@ This file contains Champagne algorithm for Sparse Bayesian Learning (SBL) models
 import numpy as np
 import matplotlib.pyplot as plt
 
-def champagne(H, y, sigma):
+def champagne(H, y, sigma_init, fixed = False):
     
     # Initialisation
     gamma = 0 * H.T @ y + 1
     Id = np.eye(len(y))
+    sigma = 1 * sigma_init
 
-    for t in range(10):
+    for t in range(20):
         #print(t)
 
         Gamma = np.diag(gamma)
@@ -24,12 +25,12 @@ def champagne(H, y, sigma):
 
         Sigma_x = Gamma - Gamma @ H.T @ Sigma_y_inv @ H @ Gamma
 
-
-        # Update of gamma
-
-        # EM update
-        gamma = np.diag(Sigma_x) + x_hat**2
-    
+        # Noise update
+        if fixed :
+            sigma = np.mean((y - H @ x_hat)**2) + sigma * np.sum( np.diag(Sigma_x) / gamma ) / len(y)
+        
+        # gamma update
+        gamma = np.diag(Sigma_x) + x_hat**2 # EM update
     return x_hat
 
 #####################################################################
@@ -42,7 +43,7 @@ list_p = [0.01, 0.05, 0.1]
 
 T = 1e-3
 
-N = 100
+N = 1#00
 
 res = np.zeros((len(list_H),len(list_iSNR), len(list_p),3))
 

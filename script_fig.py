@@ -5,12 +5,12 @@ from scipy.io import loadmat
 
 from matplotlib.patches import Patch
 
-iSNR = 20
+iSNR = 10
 L = 0.06
 
 p_list = [0.01, 0.05, 0.1]
 #bars = ['Id', 'w=0', 'w=0.5', 'w=0.7', 'w=0.9']
-bars = ['Id', 'sqr \mu = 0', 'rec \mu = 0', 'sqr \mu = 0.5', 'rec \mu = 0.5']
+bars = ['Id', 'sqr $\mu = 0$', 'rec $\mu = 0$', 'sqr $\mu = 0.4$', 'rec $\mu = 0.4$']
 
 color_list = ['r', 'y', 'g','b','c']
 hatch_list = [None,'/','-','x']
@@ -49,11 +49,12 @@ for i in range(len(p_list)) :
         plt.title('Input SNR = ' + str(iSNR) + ' dB')
         plt.xticks(abcisse + 0.4, bars, rotation=15, fontweight='bold')
         
-        plt.legend(handles = handle_list)
+        if k == 2:
+            plt.legend(handles = handle_list)
         
         if k < 2 :
             plt.yscale('log')
-        plt.xlim(-0.2,6.5)
+        plt.xlim(-0.2,5)
         #plt.show()
 #        plt.figure(k)
 #        plt.plot(abcisse + i * 0.1, res_em[0, :, k], color_list[i] + '^', label = 'L0')
@@ -76,10 +77,10 @@ for i in range(len(p_list)) :
         plt.ylabel(tag_list[k])
         plt.title('Input SNR = ' + str(iSNR) + ' dB')
         plt.xticks(abcisse + 0.4, bars, rotation=15, fontweight='bold')
-        
-        plt.legend(handles = handle_list2)
+        if k==5 :
+            plt.legend(handles = handle_list2)
         plt.yscale('log')
-        plt.xlim(-0.2,6.5)
+        plt.xlim(-0.2,5)
         #plt.show()
         
 #    for k in range(3,6) :
