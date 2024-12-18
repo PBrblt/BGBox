@@ -5,6 +5,7 @@ This file contains Champagne algorithm for Sparse Bayesian Learning (SBL) models
 @author: pierrebarbault
 """
 import numpy as np
+import time
 import matplotlib.pyplot as plt
 
 def champagne(H, y, sigma_init, fixed = False):
@@ -66,7 +67,10 @@ for k in range(len(list_H)):
             
                 y = y + np.random.randn(N_y) * s_e
 
-                x_est = champagne(H, y, s_e**2)
+                #tic = time.time()
+                #x_est = champagne(H, y, s_e**2, True)
+                x_est = champagne(H, y, np.mean(y**2), True)
+                #print(time.time()-tic)
 
                 fp = np.sum( (abs(x_est) > T) * (1 - s) )
                 fn = np.sum( (abs(x_est) <= T) * s )
@@ -78,7 +82,7 @@ for k in range(len(list_H)):
 
 print(res)
 
-np.save("Results/res_champ", res)
+np.save("Results/res_champ_uns_2", res)
 
 plt.figure()
 plt.scatter(np.arange(N_x), x)

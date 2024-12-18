@@ -19,7 +19,7 @@ list_w = [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
 list_p = [0.01, 0.05, 0.1]
 list_line = ['-', '--', '-.']
 
-res_champ = np.load("Results/res_champ.npy")
+res_champ = np.load("Results/res_champ_uns_2.npy")
 
 for i in range(len(list_iSNR)):
     iSNR = list_iSNR[i]

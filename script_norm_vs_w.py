@@ -6,6 +6,7 @@ Created on Thu Jun  1 08:35:01 2023
 @author: pierrebarbault
 """
 import numpy as np
+import time
 
 #import Methods.bgEM as em
 import Methods.bgMOM as mom
@@ -224,8 +225,10 @@ def exp_trial(p, iSNR, fixed = False):
             
             theta_m, x_m = lem.em_marg(H, y, 0 * x, theta_mom, fixed, N_out = 100)
             
+            #tic = time.time()
             theta_j, x_j = lem.em_joint(H, y, 0 * x, theta_mom, fixed)
             theta_jm, x_jm = lem.em_marg(H, y, x_j, theta_j, fixed)
+            #print(time.time()-tic)
             theta_j, x_j = lem.em_joint(H, y, x_j, theta_j, fixed)
             
             
